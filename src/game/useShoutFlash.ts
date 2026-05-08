@@ -99,11 +99,11 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
         // visible, l'amaguem i esperem 1s sencer abans de mostrar-ne un
         // de nou. Així mai dos cartells es solapen i sempre hi ha un
         // respir clar entre cants.
-        let hadVisible = false;
-        setFlashes((curr) => {
-          hadVisible = curr.length > 0;
-          return curr.length > 0 ? [] : curr;
-        });
+        const hadVisible = visibleRef.current.length > 0;
+        if (hadVisible) {
+          visibleRef.current = [];
+          setFlashes([]);
+        }
         if (hadVisible) {
           await new Promise<void>((r) => {
             const t = window.setTimeout(r, SHOUT_FLASH_GAP_MS) as unknown as number;
@@ -123,7 +123,8 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
           timersRef.current.push(t);
         });
         if (token.cancelled) return;
-        setFlashes([{ player, what, labelOverride }]);
+        visibleRef.current = [{ player, what, labelOverride }];
+        setFlashes(visibleRef.current);
         const startedAt = Date.now();
         await speakPromise;
         if (token.cancelled) return;
@@ -141,7 +142,8 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
             });
             if (token.cancelled) return;
           }
-          setFlashes((curr) => curr.filter((f) => !(f.player === player && f.what === what)));
+          visibleRef.current = [];
+          setFlashes([]);
           // Gap obligatori d'1s després que el cartell desaparega — així
           // cap cartell nou pot aparèixer abans que passe aquest segon.
           await new Promise<void>((r) => {
