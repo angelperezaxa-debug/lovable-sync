@@ -511,7 +511,31 @@ export function partnerAnswerFor(
     return answer;
   }
   // "puc-anar"
-  // Mode sincer:
+  // Si en aquesta baza ja hi ha alguna carta jugada per un rival, la
+  // resposta depèn estrictament de si el company pot guanyar-la o no.
+  // Mai diem "Tinc un 3" ni "Algo tinc" si el 3 / la carta top no
+  // serveix per a superar la carta ja jugada: el company demana saber
+  // si pot anar a buscar-lo, no què té a la mà.
+  {
+    const myTeamP = teamOf(partner);
+    const curTrick = r.tricks[r.tricks.length - 1];
+    const rivalPlayedCards = (curTrick?.cards ?? []).filter(
+      (tc) => teamOf(tc.player) !== myTeamP,
+    );
+    if (rivalPlayedCards.length > 0) {
+      const highestRival = Math.max(
+        ...rivalPlayedCards.map((tc) => cardStrength(tc.card)),
+      );
+      const canBeat = hand.some((c) => cardStrength(c) > highestRival);
+      if (canBeat) {
+        if (lie) return "a-tu";
+        return "vine-a-mi";
+      }
+      if (lie) return "vine-a-mi";
+      return "a-tu";
+    }
+  }
+  // Mode sincer (cap carta rival jugada encara en aquesta baza):
   //  - Si té qualsevol carta top de truc (As d'espases, As de bastos,
   //    7 d'espases o 7 d'oros) → SEMPRE "Algo tinc" (tinc-bona). Així
   //    si abans s'ha demanat "Que tens?", la resposta a "Puc anar a tu?"
