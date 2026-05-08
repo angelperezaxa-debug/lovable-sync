@@ -1767,7 +1767,7 @@ export function TrucBoard(props: TrucBoardProps) {
             player={PARTNER}
           />
         </div>
-        <div className="absolute top-12 left-1/2 -translate-y-1/2 -translate-x-full z-20" style={{ marginLeft: "-55px", marginTop: "-30px" }}>
+        <div className="absolute top-12 left-1/2 -translate-y-1/2 -translate-x-full z-50" style={{ marginLeft: "-55px", marginTop: "-30px" }}>
           <div className="relative">
             <PlayerSeat player={PARTNER} match={match} position="top" name={nameTop} isPendingResponder={isPendingResponder(PARTNER)} presence={presenceFor(PARTNER)} presenceLastSeen={presenceLastSeenFor(PARTNER)} />
             {messages.find((m) => m.player === PARTNER) && (
@@ -1823,7 +1823,7 @@ export function TrucBoard(props: TrucBoardProps) {
             player={LEFT}
           />
         </div>
-        <div className="absolute left-1 top-[42%] z-20" style={{ marginTop: "55px" }}>
+        <div className="absolute left-1 top-[42%] z-50" style={{ marginTop: "55px" }}>
           <div className="relative">
             <PlayerSeat player={LEFT} match={match} position="left" name={nameLeft} isPendingResponder={isPendingResponder(LEFT)} presence={presenceFor(LEFT)} presenceLastSeen={presenceLastSeenFor(LEFT)} />
             {messages.find((m) => m.player === LEFT) && (
@@ -1870,7 +1870,7 @@ export function TrucBoard(props: TrucBoardProps) {
           </div>
         </div>
 
-        <div className="absolute right-1 top-[42%] z-20" style={{ transform: "translateY(-100%)", marginTop: "-55px" }}>
+        <div className="absolute right-1 top-[42%] z-50" style={{ transform: "translateY(-100%)", marginTop: "-55px" }}>
           <div className="relative">
             <PlayerSeat player={RIGHT} match={match} position="right" name={nameRight} isPendingResponder={isPendingResponder(RIGHT)} presence={presenceFor(RIGHT)} presenceLastSeen={presenceLastSeenFor(RIGHT)} />
             {messages.find((m) => m.player === RIGHT) && (
