@@ -1337,6 +1337,25 @@ function choosePlayCard(
   const lowest = sorted[0]!;
   const highest = sorted[sorted.length - 1]!;
 
+  // ---- Regla: primer de la pareja a tirar amb cap carta ≥ 3 ----
+  // Si el meu company encara no ha jugat en aquesta baza i totes les
+  // meues cartes són estrictament menors que un 3 (cap 3, cap top
+  // card; força màxima < 70), no té sentit cremar la més alta intentant
+  // guanyar — sempre tira la més baixa per reservar les "mitjanes" per
+  // a bazas posteriors.
+  {
+    const myTeamFirst = teamOf(player);
+    const partnerHasPlayedHere = trick.cards.some(
+      (tc) => teamOf(tc.player) === myTeamFirst && tc.player !== player,
+    );
+    if (!partnerHasPlayedHere) {
+      const maxStr = cardStrength(highest);
+      if (maxStr < 70) {
+        return { type: "play-card", cardId: lowest.id };
+      }
+    }
+  }
+
   // ---- Regla "company guanya amb la 2a més alta i jo tinc la més alta" ----
   // Si el meu equip ja ha guanyat alguna baza anterior, el meu company
   // ja ha jugat en la baza actual i la seua carta és la 2a més alta
