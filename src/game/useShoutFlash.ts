@@ -35,6 +35,7 @@ const SPOKEN_SHOUTS: ReadonlySet<ShoutKind> = new Set([
  */
 export function useShoutFlashes(match: MatchState | null, disabled = false): ShoutFlash[] {
   const [flashes, setFlashes] = useState<ShoutFlash[]>([]);
+  const visibleRef = useRef<ShoutFlash[]>([]);
   const lastSeenIdxRef = useRef<number>(-1);
   const timersRef = useRef<number[]>([]);
   const roundKeyRef = useRef<string | null>(null);
@@ -45,6 +46,7 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
 
   useEffect(() => {
     if (disabled || !match) {
+      visibleRef.current = [];
       setFlashes([]);
       return;
     }
@@ -66,6 +68,7 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
       cancelTokenRef.current.cancelled = true;
       cancelTokenRef.current = { cancelled: false };
       queueTailRef.current = Promise.resolve();
+      visibleRef.current = [];
       setFlashes([]);
     }
     const log = match.round.log;
@@ -77,6 +80,7 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
       if (ev.type === "trick-end") {
         queueTailRef.current = queueTailRef.current.then(() => {
           if (token.cancelled) return;
+          visibleRef.current = [];
           setFlashes([]);
         });
         continue;
