@@ -127,6 +127,7 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
   const localFlashTailRef = useRef<Promise<void>>(Promise.resolve());
   const localFlashTimersRef = useRef<number[]>([]);
   const localFlashCancelRef = useRef<{ cancelled: boolean }>({ cancelled: false });
+  const localFlashBusyUntilRef = useRef<number>(0);
   // Índex de la baza actual des del punt de vista de la UI. Es declara
   // ací (abans del recordChatPhrase) per poder rastrejar a quina baza
   // s'ha emés cada frase ("Vine a vore!", etc.).
@@ -483,6 +484,9 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
   const enqueueLocalShoutFlash = useCallback((player: PlayerId, what: ShoutKind, labelOverride?: string) => {
     const flashId = `${player}-${what}-${Date.now()}-${Math.random()}`;
     const token = localFlashCancelRef.current;
+    const AUDIO_LEAD_MS = 700;
+    const estimatedStartAt = Math.max(Date.now(), localFlashBusyUntilRef.current);
+    localFlashBusyUntilRef.current = estimatedStartAt + AUDIO_LEAD_MS + SHOUT_FLASH_HOLD_MS + SHOUT_FLASH_GAP_MS;
     localFlashTailRef.current = localFlashTailRef.current.then(async () => {
       if (token.cancelled) return;
       let hadVisible = false;
@@ -497,7 +501,6 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
         });
         if (token.cancelled) return;
       }
-      const AUDIO_LEAD_MS = 700;
       const speakPromise = speakShout(what, labelOverride).catch(() => undefined);
       await new Promise<void>((resolve) => {
         const id = window.setTimeout(resolve, AUDIO_LEAD_MS) as unknown as number;
@@ -505,9 +508,11 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
       });
       if (token.cancelled) return;
       setLocalFlashQueue([{ id: flashId, player, what, labelOverride }]);
+      const shownAt = Date.now();
       await speakPromise;
+      const remainingVisibleMs = Math.max(0, SHOUT_FLASH_HOLD_MS - (Date.now() - shownAt));
       await new Promise<void>((resolve) => {
-        const id = window.setTimeout(resolve, SHOUT_FLASH_HOLD_MS) as unknown as number;
+        const id = window.setTimeout(resolve, remainingVisibleMs) as unknown as number;
         localFlashTimersRef.current.push(id);
       });
       if (token.cancelled) return;
