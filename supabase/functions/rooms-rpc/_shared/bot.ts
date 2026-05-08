@@ -620,6 +620,66 @@ function decideEnvitResponse(
     return { type: "shout", what: "no-vull" };
   }
 
+  // ---- OBLIGACIÓ ABSOLUTA: 2a baza, hem PERDUT la 1a, sóc l'últim de la
+  // meua parella en tirar (el meu company ja ha tirat) i tinc alguna
+  // carta que guanya a la millor jugada a la mesa → l'he de tirar SÍ
+  // o SÍ. Aquesta regla té prioritat sobre tot (truc, tapar, reservar
+  // manilles…) perquè perdre la 2a després d'haver perdut la 1a tanca
+  // el truc i la mà.
+  {
+    const myTeamMust = teamOf(player);
+    const firstTMust = r.tricks[0];
+    const lostFirstMust =
+      !!firstTMust &&
+      firstTMust.parda !== true &&
+      firstTMust.winner !== undefined &&
+      teamOf(firstTMust.winner!) !== myTeamMust;
+    const curTrickMust = r.tricks[r.tricks.length - 1];
+    const inSecondTrickMust =
+      r.tricks.length === 2 &&
+      !!curTrickMust &&
+      !curTrickMust.cards.some((tc) => tc.player === player);
+    const partnerPlayedMust =
+      !!curTrickMust &&
+      curTrickMust.cards.some(
+        (tc) => teamOf(tc.player) === myTeamMust && tc.player !== player,
+      );
+    if (lostFirstMust && inSecondTrickMust && partnerPlayedMust) {
+      const tableBestMust = curTrickMust!.cards.reduce(
+        (mx, tc) => Math.max(mx, cardStrength(tc.card)),
+        -1,
+      );
+      const tableLeaderMust = curTrickMust!.cards.reduce(
+        (best, tc) =>
+          best === null || cardStrength(tc.card) > cardStrength(best.card)
+            ? tc
+            : best,
+        null as { player: PlayerId; card: Card } | null,
+      );
+      const partnerWinsMust =
+        !!tableLeaderMust && teamOf(tableLeaderMust.player) === myTeamMust;
+      // Si el company ja guanya la mesa i sóc l'últim (4t, 3 cartes a la
+      // mesa), no cal sobreposar — guarda les cartes fortes.
+      const allFourPlayedExceptMe = curTrickMust!.cards.length === 3;
+      if (!(partnerWinsMust && allFourPlayedExceptMe)) {
+        const playActsMust = actions.filter(
+          (a) => a.type === "play-card",
+        ) as Extract<Action, { type: "play-card" }>[];
+        const sortedAscMust = [...hand].sort(
+          (a, b) => cardStrength(a) - cardStrength(b),
+        );
+        const winnersMust = sortedAscMust.filter(
+          (c) => cardStrength(c) > tableBestMust,
+        );
+        if (winnersMust.length > 0) {
+          const matchAct = playActsMust.find(
+            (a) => a.cardId === winnersMust[0]!.id,
+          );
+          if (matchAct) return { type: "play-card", cardId: matchAct.cardId };
+        }
+      }
+    }
+  }
 
   // ----- Mode CONSERVADOR (regla dura) -----
   // Només acceptar envit si:
