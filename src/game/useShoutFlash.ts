@@ -78,10 +78,17 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
       const ev = log[i];
       lastSeenIdxRef.current = i;
       if (ev.type === "trick-end") {
-        queueTailRef.current = queueTailRef.current.then(() => {
+        queueTailRef.current = queueTailRef.current.then(async () => {
           if (token.cancelled) return;
-          visibleRef.current = [];
-          setFlashes([]);
+          const hadVisible = visibleRef.current.length > 0;
+          if (hadVisible) {
+            visibleRef.current = [];
+            setFlashes([]);
+            await new Promise<void>((r) => {
+              const t = window.setTimeout(r, SHOUT_FLASH_GAP_MS) as unknown as number;
+              timersRef.current.push(t);
+            });
+          }
         });
         continue;
       }
