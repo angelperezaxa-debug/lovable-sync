@@ -1870,7 +1870,7 @@ export function TrucBoard(props: TrucBoardProps) {
           </div>
         </div>
 
-        <div className="absolute right-1 top-[42%] z-20" style={{ transform: "translateY(-100%)", marginTop: "-55px" }}>
+        <div className="absolute right-1 top-[42%] z-50" style={{ transform: "translateY(-100%)", marginTop: "-55px" }}>
           <div className="relative">
             <PlayerSeat player={RIGHT} match={match} position="right" name={nameRight} isPendingResponder={isPendingResponder(RIGHT)} presence={presenceFor(RIGHT)} presenceLastSeen={presenceLastSeenFor(RIGHT)} />
             {messages.find((m) => m.player === RIGHT) && (
