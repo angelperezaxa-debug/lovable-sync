@@ -1767,7 +1767,7 @@ export function TrucBoard(props: TrucBoardProps) {
             player={PARTNER}
           />
         </div>
-        <div className="absolute top-12 left-1/2 -translate-y-1/2 -translate-x-full z-20" style={{ marginLeft: "-55px", marginTop: "-30px" }}>
+        <div className="absolute top-12 left-1/2 -translate-y-1/2 -translate-x-full z-50" style={{ marginLeft: "-55px", marginTop: "-30px" }}>
           <div className="relative">
             <PlayerSeat player={PARTNER} match={match} position="top" name={nameTop} isPendingResponder={isPendingResponder(PARTNER)} presence={presenceFor(PARTNER)} presenceLastSeen={presenceLastSeenFor(PARTNER)} />
             {messages.find((m) => m.player === PARTNER) && (
