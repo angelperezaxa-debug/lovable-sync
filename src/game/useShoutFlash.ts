@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { speakShout } from "@/lib/speech";
+import { SHOUT_FLASH_GAP_MS, SHOUT_FLASH_HOLD_MS } from "./chatTimings";
 import { computeShoutDisplay } from "./shoutDisplay";
 import type { MatchState, PlayerId, ShoutKind } from "./types";
 
@@ -94,7 +95,6 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
         // visible, l'amaguem i esperem 1s sencer abans de mostrar-ne un
         // de nou. Així mai dos cartells es solapen i sempre hi ha un
         // respir clar entre cants.
-        const POST_HIDE_GAP_MS = 1000;
         let hadVisible = false;
         setFlashes((curr) => {
           hadVisible = curr.length > 0;
@@ -102,7 +102,7 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
         });
         if (hadVisible) {
           await new Promise<void>((r) => {
-            const t = window.setTimeout(r, POST_HIDE_GAP_MS) as unknown as number;
+            const t = window.setTimeout(r, SHOUT_FLASH_GAP_MS) as unknown as number;
             timersRef.current.push(t);
           });
           if (token.cancelled) return;
@@ -128,9 +128,8 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
           // encara que l'àudio falle, no estiga disponible o siga molt curt
           // (TTS fire-and-forget). Així "Vull!" / "No vull" sempre es
           // veuen el temps suficient per a llegir-los.
-          const MIN_VISIBLE_MS = 1600;
           const elapsed = Date.now() - startedAt;
-          const remaining = MIN_VISIBLE_MS - elapsed;
+          const remaining = SHOUT_FLASH_HOLD_MS - elapsed;
           if (remaining > 0) {
             await new Promise<void>((r) => {
               const t = window.setTimeout(r, remaining) as unknown as number;
@@ -142,7 +141,7 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
           // Gap obligatori d'1s després que el cartell desaparega — així
           // cap cartell nou pot aparèixer abans que passe aquest segon.
           await new Promise<void>((r) => {
-            const t = window.setTimeout(r, POST_HIDE_GAP_MS) as unknown as number;
+            const t = window.setTimeout(r, SHOUT_FLASH_GAP_MS) as unknown as number;
             timersRef.current.push(t);
           });
         }
