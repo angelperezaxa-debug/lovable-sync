@@ -471,27 +471,52 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
     }
   };
 
+  const resetLocalFlashQueue = useCallback(() => {
+    localFlashCancelRef.current.cancelled = true;
+    localFlashCancelRef.current = { cancelled: false };
+    localFlashTailRef.current = Promise.resolve();
+    for (const id of localFlashTimersRef.current) window.clearTimeout(id);
+    localFlashTimersRef.current = [];
+    setLocalFlashQueue([]);
+  }, []);
+
   const enqueueLocalShoutFlash = useCallback((player: PlayerId, what: ShoutKind, labelOverride?: string) => {
     const flashId = `${player}-${what}-${Date.now()}-${Math.random()}`;
-    if (shoutTimersRef.current[player]) {
-      window.clearTimeout(shoutTimersRef.current[player]!);
-      shoutTimersRef.current[player] = null;
-    }
-    // Llança l'àudio 500ms abans del cartell perquè la veu i el cartell
-    // central es percebin sincronitzats (el TTS té una xicoteta latència).
-    void speakShout(what, labelOverride).catch(() => undefined);
-    const AUDIO_LEAD_MS = 500;
-    window.setTimeout(() => {
-      setLocalFlashQueue((prev) => [
-        ...prev.filter((f) => f.player !== player),
-        { id: flashId, player, what, labelOverride },
-      ]);
-      const timer = window.setTimeout(() => {
-        setLocalFlashQueue((prev) => prev.filter((f) => f.id !== flashId));
-        shoutTimersRef.current[player] = null;
-      }, SHOUT_FLASH_HOLD_MS) as unknown as number;
-      shoutTimersRef.current[player] = timer;
-    }, AUDIO_LEAD_MS);
+    const token = localFlashCancelRef.current;
+    localFlashTailRef.current = localFlashTailRef.current.then(async () => {
+      if (token.cancelled) return;
+      let hadVisible = false;
+      setLocalFlashQueue((prev) => {
+        hadVisible = prev.length > 0;
+        return prev.length > 0 ? [] : prev;
+      });
+      if (hadVisible) {
+        await new Promise<void>((resolve) => {
+          const id = window.setTimeout(resolve, SHOUT_FLASH_GAP_MS) as unknown as number;
+          localFlashTimersRef.current.push(id);
+        });
+        if (token.cancelled) return;
+      }
+      const AUDIO_LEAD_MS = 700;
+      const speakPromise = speakShout(what, labelOverride).catch(() => undefined);
+      await new Promise<void>((resolve) => {
+        const id = window.setTimeout(resolve, AUDIO_LEAD_MS) as unknown as number;
+        localFlashTimersRef.current.push(id);
+      });
+      if (token.cancelled) return;
+      setLocalFlashQueue([{ id: flashId, player, what, labelOverride }]);
+      await speakPromise;
+      await new Promise<void>((resolve) => {
+        const id = window.setTimeout(resolve, SHOUT_FLASH_HOLD_MS) as unknown as number;
+        localFlashTimersRef.current.push(id);
+      });
+      if (token.cancelled) return;
+      setLocalFlashQueue((prev) => prev.filter((f) => f.id !== flashId));
+      await new Promise<void>((resolve) => {
+        const id = window.setTimeout(resolve, SHOUT_FLASH_GAP_MS) as unknown as number;
+        localFlashTimersRef.current.push(id);
+      });
+    });
   }, []);
 
   const matchRef = useRef<MatchState>(null as unknown as MatchState);
