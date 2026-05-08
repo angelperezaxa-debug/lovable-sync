@@ -89,9 +89,28 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
 
       queueTailRef.current = queueTailRef.current.then(async () => {
         if (token.cancelled) return;
-        // Avança l'àudio 500ms respecte al cartell perquè la veu i el cartell
-        // s'experimenten alhora (el TTS sol tindre una latència inicial).
-        const AUDIO_LEAD_MS = 500;
+        // REGLA INTRENCABLE: no es pot mostrar un cartell central nou si
+        // el cartell anterior encara està visible. Si hi ha algun flash
+        // visible, l'amaguem i esperem 1s sencer abans de mostrar-ne un
+        // de nou. Així mai dos cartells es solapen i sempre hi ha un
+        // respir clar entre cants.
+        const POST_HIDE_GAP_MS = 1000;
+        let hadVisible = false;
+        setFlashes((curr) => {
+          hadVisible = curr.length > 0;
+          return curr.length > 0 ? [] : curr;
+        });
+        if (hadVisible) {
+          await new Promise<void>((r) => {
+            const t = window.setTimeout(r, POST_HIDE_GAP_MS) as unknown as number;
+            timersRef.current.push(t);
+          });
+          if (token.cancelled) return;
+        }
+        // Avança l'àudio 700ms respecte al cartell perquè la veu i el cartell
+        // s'experimenten alhora (sumant els 200ms addicionals demanats per
+        // a l'envit i la latència inicial de reproducció).
+        const AUDIO_LEAD_MS = 700;
         const speakPromise = SPOKEN_SHOUTS.has(what)
           ? speakShout(what, labelOverride).catch(() => undefined)
           : Promise.resolve();
@@ -120,12 +139,13 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
             if (token.cancelled) return;
           }
           setFlashes((curr) => curr.filter((f) => !(f.player === player && f.what === what)));
+          // Gap obligatori d'1s després que el cartell desaparega — així
+          // cap cartell nou pot aparèixer abans que passe aquest segon.
+          await new Promise<void>((r) => {
+            const t = window.setTimeout(r, POST_HIDE_GAP_MS) as unknown as number;
+            timersRef.current.push(t);
+          });
         }
-        // Petit respir entre cants perquè no sonen enganxats.
-        await new Promise<void>((r) => {
-          const t = window.setTimeout(r, 150) as unknown as number;
-          timersRef.current.push(t);
-        });
       });
     }
   }, [match, disabled]);
