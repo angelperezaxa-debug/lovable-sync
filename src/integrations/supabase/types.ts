@@ -74,6 +74,59 @@ export type Database = {
         }
         Relationships: []
       }
+      admin_passwords: {
+        Row: {
+          created_at: string
+          id: string
+          password_hash: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          password_hash: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          password_hash?: string
+        }
+        Relationships: []
+      }
+      chat_flag_audit: {
+        Row: {
+          action: string
+          admin_id: string
+          created_at: string
+          flag_id: number
+          id: number
+          note: string | null
+        }
+        Insert: {
+          action: string
+          admin_id: string
+          created_at?: string
+          flag_id: number
+          id?: number
+          note?: string | null
+        }
+        Update: {
+          action?: string
+          admin_id?: string
+          created_at?: string
+          flag_id?: number
+          id?: number
+          note?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "chat_flag_audit_flag_id_fkey"
+            columns: ["flag_id"]
+            isOneToOne: false
+            referencedRelation: "room_chat_flags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       player_profiles: {
         Row: {
           accept_threshold: number
