@@ -74,41 +74,6 @@ export type Database = {
         }
         Relationships: []
       }
-      chat_flag_audit: {
-        Row: {
-          action: string
-          admin_id: string
-          created_at: string
-          flag_id: number
-          id: number
-          note: string | null
-        }
-        Insert: {
-          action: string
-          admin_id: string
-          created_at?: string
-          flag_id: number
-          id?: number
-          note?: string | null
-        }
-        Update: {
-          action?: string
-          admin_id?: string
-          created_at?: string
-          flag_id?: number
-          id?: number
-          note?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "chat_flag_audit_flag_id_fkey"
-            columns: ["flag_id"]
-            isOneToOne: false
-            referencedRelation: "room_chat_flags"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       player_profiles: {
         Row: {
           accept_threshold: number
@@ -248,12 +213,14 @@ export type Database = {
       room_chat_flags: {
         Row: {
           created_at: string
+          decided_at: string | null
+          decided_by: string | null
+          expires_at: string
           id: number
-          reason: string
+          message_id: number | null
+          message_text: string | null
+          reason: string | null
           reporter_device_id: string
-          reporter_seat: number
-          resolved_at: string | null
-          resolved_by: string | null
           room_id: string
           status: string
           target_device_id: string
@@ -261,12 +228,14 @@ export type Database = {
         }
         Insert: {
           created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          expires_at: string
           id?: number
-          reason?: string
+          message_id?: number | null
+          message_text?: string | null
+          reason?: string | null
           reporter_device_id: string
-          reporter_seat: number
-          resolved_at?: string | null
-          resolved_by?: string | null
           room_id: string
           status?: string
           target_device_id: string
@@ -274,26 +243,20 @@ export type Database = {
         }
         Update: {
           created_at?: string
+          decided_at?: string | null
+          decided_by?: string | null
+          expires_at?: string
           id?: number
-          reason?: string
+          message_id?: number | null
+          message_text?: string | null
+          reason?: string | null
           reporter_device_id?: string
-          reporter_seat?: number
-          resolved_at?: string | null
-          resolved_by?: string | null
           room_id?: string
           status?: string
           target_device_id?: string
           target_seat?: number
         }
-        Relationships: [
-          {
-            foreignKeyName: "room_chat_flags_room_id_fkey"
-            columns: ["room_id"]
-            isOneToOne: false
-            referencedRelation: "rooms"
-            referencedColumns: ["id"]
-          },
-        ]
+        Relationships: []
       }
       room_players: {
         Row: {
