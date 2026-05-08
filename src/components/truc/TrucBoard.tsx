@@ -1378,27 +1378,27 @@ export function TrucBoard(props: TrucBoardProps) {
   }, [partnerJustPlayedAfter2nd]);
   if (highlightRespostes2nd) {
     const myHand = myHandForHL;
-    const hasTopAceHL = myHand.some(
-      (c) => c.rank === 1 && (c.suit === "bastos" || c.suit === "espases"),
-    );
-    const has7EspOrOrosHL = myHand.some(
-      (c) => c.rank === 7 && (c.suit === "espases" || c.suit === "oros"),
-    );
-    const hasThreeOnly = hasThreeHL;
-    if (hasTopAceHL) {
-      highlightedPhraseIds.add("vine-a-mi");
-    } else if (has7EspOrOrosHL) {
-      highlightedPhraseIds.add("vine-a-vore");
-    } else if (hasThreeOnly) {
-      highlightedPhraseIds.add("tinc-un-tres");
-    } else if (!hasGoodCardHL) {
+    // Carta més alta ja jugada en aquesta baza (per qualsevol jugador).
+    const playedHere = firstTrick0?.cards ?? [];
+    const maxPlayedStr = playedHere.length > 0
+      ? Math.max(...playedHere.map((tc) => cardStrength(tc.card)))
+      : -1;
+    const myMaxStr = myHand.length > 0
+      ? Math.max(...myHand.map((c) => cardStrength(c)))
+      : -1;
+    // No podem guanyar a la carta ja jugada.
+    const cantBeatPlayed = maxPlayedStr >= 0 && myMaxStr <= maxPlayedStr;
+
+    if (cantBeatPlayed) {
       highlightedPhraseIds.add("a-tu");
-    }
-    // Si el company ens ha preguntat "Què tens?" i tenim alguna carta top,
-    // destaquem també "Algo tinc" (tinc-bona).
-    const partnerLastMsg = [...messages].reverse().find((m) => m.player === PARTNER);
-    if (partnerLastMsg?.phraseId === "que-tens" && hasManillaHL) {
+    } else if (hasManillaHL) {
+      // Carta top (manilla o as de bastos/espases): "Vine a mi!" o "Algo tinc".
+      highlightedPhraseIds.add("vine-a-mi");
       highlightedPhraseIds.add("tinc-bona");
+    } else if (hasThreeHL) {
+      highlightedPhraseIds.add("tinc-un-tres");
+    } else {
+      highlightedPhraseIds.add("a-tu");
     }
   }
 
