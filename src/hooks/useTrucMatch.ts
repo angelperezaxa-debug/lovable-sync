@@ -791,7 +791,11 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
       const canRaiseOrAccept = acts.some(
         (a) => a.type === "shout" && (a.what === "vull" || a.what === "renvit" || a.what === "falta-envit"),
       );
-      const wouldAccept = myEnvitNow >= 30 && canRaiseOrAccept;
+      const partnerSeatRej = partnerOf(botPlayer);
+      const partnerAlreadyRejected =
+        r.envitState.kind === "pending" &&
+        (r.envitState.rejectedBy ?? []).includes(partnerSeatRej);
+      const wouldAccept = myEnvitNow >= 30 && canRaiseOrAccept && !partnerAlreadyRejected;
       const partnerEnv = partnerOf(botPlayer);
       const partnerIsBotEnv = partnerEnv !== HUMAN;
       if (wouldAccept) {
