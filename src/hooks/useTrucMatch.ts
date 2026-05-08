@@ -837,6 +837,37 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
       const wouldAccept = myEnvitNow >= 30 && canRaiseOrAccept && !partnerAlreadyRejected;
       const partnerEnv = partnerOf(botPlayer);
       const partnerIsBotEnv = partnerEnv !== HUMAN;
+      // Si el bot té 33 d'envit, o 32 i és mà sobre el rival que ha
+      // envidat, ha de renvidar DIRECTAMENT sense consultar el company.
+      const callerEnv =
+        r.envitState.kind === "pending" ? r.envitState.calledBy : null;
+      let manoPriorityOverCaller = false;
+      if (callerEnv !== null) {
+        let pm: PlayerId = r.mano;
+        for (let i = 0; i < 4; i++) {
+          if (pm === botPlayer) { manoPriorityOverCaller = true; break; }
+          if (pm === callerEnv) { manoPriorityOverCaller = false; break; }
+          pm = ((pm + 1) % 4) as PlayerId;
+        }
+      }
+      const canRenvitDirect = acts.some(
+        (a) => a.type === "shout" && (a.what === "renvit" || a.what === "falta-envit"),
+      );
+      const shouldRenvitDirect =
+        canRenvitDirect &&
+        !partnerAlreadyRejected &&
+        (myEnvitNow >= 33 || (myEnvitNow === 32 && manoPriorityOverCaller));
+      if (shouldRenvitDirect) {
+        consultStartedRef.current.add(envitConsultKey);
+        consultAdviceRef.current.set(envitConsultKey, "neutral");
+        scheduleConsultTimer(() => {
+          const renvit = legalActions(matchRef.current, botPlayer).find(
+            (a) => a.type === "shout" && (a.what === "renvit" || a.what === "falta-envit"),
+          );
+          if (renvit) dispatch(botPlayer, renvit);
+        }, CONSULT_DECIDE_DELAY_MS);
+        return;
+      }
       if (wouldAccept) {
         consultStartedRef.current.add(envitConsultKey);
         const finalizeAfter = (instruction: ChatPhraseId | null) => {
