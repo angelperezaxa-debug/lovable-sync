@@ -7,6 +7,7 @@
  */
 import { useEffect, useRef, useState } from "react";
 import { speakShout } from "@/lib/speech";
+import { SHOUT_FLASH_GAP_MS, SHOUT_FLASH_HOLD_MS } from "./chatTimings";
 import { computeShoutDisplay } from "./shoutDisplay";
 import type { MatchState, PlayerId, ShoutKind } from "./types";
 
@@ -34,6 +35,7 @@ const SPOKEN_SHOUTS: ReadonlySet<ShoutKind> = new Set([
  */
 export function useShoutFlashes(match: MatchState | null, disabled = false): ShoutFlash[] {
   const [flashes, setFlashes] = useState<ShoutFlash[]>([]);
+  const visibleRef = useRef<ShoutFlash[]>([]);
   const lastSeenIdxRef = useRef<number>(-1);
   const timersRef = useRef<number[]>([]);
   const roundKeyRef = useRef<string | null>(null);
@@ -44,6 +46,7 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
 
   useEffect(() => {
     if (disabled || !match) {
+      visibleRef.current = [];
       setFlashes([]);
       return;
     }
@@ -65,6 +68,7 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
       cancelTokenRef.current.cancelled = true;
       cancelTokenRef.current = { cancelled: false };
       queueTailRef.current = Promise.resolve();
+      visibleRef.current = [];
       setFlashes([]);
     }
     const log = match.round.log;
@@ -74,9 +78,17 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
       const ev = log[i];
       lastSeenIdxRef.current = i;
       if (ev.type === "trick-end") {
-        queueTailRef.current = queueTailRef.current.then(() => {
+        queueTailRef.current = queueTailRef.current.then(async () => {
           if (token.cancelled) return;
-          setFlashes([]);
+          const hadVisible = visibleRef.current.length > 0;
+          if (hadVisible) {
+            visibleRef.current = [];
+            setFlashes([]);
+            await new Promise<void>((r) => {
+              const t = window.setTimeout(r, SHOUT_FLASH_GAP_MS) as unknown as number;
+              timersRef.current.push(t);
+            });
+          }
         });
         continue;
       }
@@ -94,15 +106,14 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
         // visible, l'amaguem i esperem 1s sencer abans de mostrar-ne un
         // de nou. Així mai dos cartells es solapen i sempre hi ha un
         // respir clar entre cants.
-        const POST_HIDE_GAP_MS = 1000;
-        let hadVisible = false;
-        setFlashes((curr) => {
-          hadVisible = curr.length > 0;
-          return curr.length > 0 ? [] : curr;
-        });
+        const hadVisible = visibleRef.current.length > 0;
+        if (hadVisible) {
+          visibleRef.current = [];
+          setFlashes([]);
+        }
         if (hadVisible) {
           await new Promise<void>((r) => {
-            const t = window.setTimeout(r, POST_HIDE_GAP_MS) as unknown as number;
+            const t = window.setTimeout(r, SHOUT_FLASH_GAP_MS) as unknown as number;
             timersRef.current.push(t);
           });
           if (token.cancelled) return;
@@ -119,7 +130,8 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
           timersRef.current.push(t);
         });
         if (token.cancelled) return;
-        setFlashes([{ player, what, labelOverride }]);
+        visibleRef.current = [{ player, what, labelOverride }];
+        setFlashes(visibleRef.current);
         const startedAt = Date.now();
         await speakPromise;
         if (token.cancelled) return;
@@ -128,9 +140,8 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
           // encara que l'àudio falle, no estiga disponible o siga molt curt
           // (TTS fire-and-forget). Així "Vull!" / "No vull" sempre es
           // veuen el temps suficient per a llegir-los.
-          const MIN_VISIBLE_MS = 1600;
           const elapsed = Date.now() - startedAt;
-          const remaining = MIN_VISIBLE_MS - elapsed;
+          const remaining = SHOUT_FLASH_HOLD_MS - elapsed;
           if (remaining > 0) {
             await new Promise<void>((r) => {
               const t = window.setTimeout(r, remaining) as unknown as number;
@@ -138,11 +149,12 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
             });
             if (token.cancelled) return;
           }
-          setFlashes((curr) => curr.filter((f) => !(f.player === player && f.what === what)));
+          visibleRef.current = [];
+          setFlashes([]);
           // Gap obligatori d'1s després que el cartell desaparega — així
           // cap cartell nou pot aparèixer abans que passe aquest segon.
           await new Promise<void>((r) => {
-            const t = window.setTimeout(r, POST_HIDE_GAP_MS) as unknown as number;
+            const t = window.setTimeout(r, SHOUT_FLASH_GAP_MS) as unknown as number;
             timersRef.current.push(t);
           });
         }
@@ -156,6 +168,7 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
       timersRef.current.forEach((timer) => window.clearTimeout(timer));
       timersRef.current = [];
       cancelTokenRef.current.cancelled = true;
+      visibleRef.current = [];
     };
   }, []);
 

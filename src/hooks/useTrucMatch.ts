@@ -40,6 +40,7 @@ import {
   LOW_LATENCY_ENVIT_REVEAL_ROUND_END_MS,
   SHOUT_FLASH_HOLD_MS,
   SHOUT_FLASH_BUFFER_MS,
+  SHOUT_FLASH_GAP_MS,
 } from "@/game/chatTimings";
 
 
@@ -123,6 +124,11 @@ interface PendingSecondPlayerWait {
 
 export function useTrucMatch(options: UseTrucMatchOptions = {}) {
   const [localFlashQueue, setLocalFlashQueue] = useState<Array<{ id: string; player: PlayerId; what: ShoutKind; labelOverride?: string }>>([]);
+  const localFlashTailRef = useRef<Promise<void>>(Promise.resolve());
+  const localFlashTimersRef = useRef<number[]>([]);
+  const localFlashCancelRef = useRef<{ cancelled: boolean }>({ cancelled: false });
+  const localFlashBusyUntilRef = useRef<number>(0);
+  const localFlashVisibleRef = useRef<Array<{ id: string; player: PlayerId; what: ShoutKind; labelOverride?: string }>>([]);
   // Índex de la baza actual des del punt de vista de la UI. Es declara
   // ací (abans del recordChatPhrase) per poder rastrejar a quina baza
   // s'ha emés cada frase ("Vine a vore!", etc.).
@@ -467,27 +473,60 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
     }
   };
 
+  const resetLocalFlashQueue = useCallback(() => {
+    localFlashCancelRef.current.cancelled = true;
+    localFlashCancelRef.current = { cancelled: false };
+    localFlashTailRef.current = Promise.resolve();
+    localFlashBusyUntilRef.current = 0;
+    for (const id of localFlashTimersRef.current) window.clearTimeout(id);
+    localFlashTimersRef.current = [];
+    localFlashVisibleRef.current = [];
+    setLocalFlashQueue([]);
+  }, []);
+
   const enqueueLocalShoutFlash = useCallback((player: PlayerId, what: ShoutKind, labelOverride?: string) => {
     const flashId = `${player}-${what}-${Date.now()}-${Math.random()}`;
-    if (shoutTimersRef.current[player]) {
-      window.clearTimeout(shoutTimersRef.current[player]!);
-      shoutTimersRef.current[player] = null;
-    }
-    // Llança l'àudio 500ms abans del cartell perquè la veu i el cartell
-    // central es percebin sincronitzats (el TTS té una xicoteta latència).
-    void speakShout(what, labelOverride).catch(() => undefined);
-    const AUDIO_LEAD_MS = 500;
-    window.setTimeout(() => {
-      setLocalFlashQueue((prev) => [
-        ...prev.filter((f) => f.player !== player),
-        { id: flashId, player, what, labelOverride },
-      ]);
-      const timer = window.setTimeout(() => {
-        setLocalFlashQueue((prev) => prev.filter((f) => f.id !== flashId));
-        shoutTimersRef.current[player] = null;
-      }, SHOUT_FLASH_HOLD_MS) as unknown as number;
-      shoutTimersRef.current[player] = timer;
-    }, AUDIO_LEAD_MS);
+    const token = localFlashCancelRef.current;
+    const AUDIO_LEAD_MS = 700;
+    const estimatedStartAt = Math.max(Date.now(), localFlashBusyUntilRef.current);
+    localFlashBusyUntilRef.current = estimatedStartAt + AUDIO_LEAD_MS + SHOUT_FLASH_HOLD_MS + SHOUT_FLASH_GAP_MS;
+    localFlashTailRef.current = localFlashTailRef.current.then(async () => {
+      if (token.cancelled) return;
+      const hadVisible = localFlashVisibleRef.current.length > 0;
+      if (hadVisible) {
+        localFlashVisibleRef.current = [];
+        setLocalFlashQueue([]);
+      }
+      if (hadVisible) {
+        await new Promise<void>((resolve) => {
+          const id = window.setTimeout(resolve, SHOUT_FLASH_GAP_MS) as unknown as number;
+          localFlashTimersRef.current.push(id);
+        });
+        if (token.cancelled) return;
+      }
+      const speakPromise = speakShout(what, labelOverride).catch(() => undefined);
+      await new Promise<void>((resolve) => {
+        const id = window.setTimeout(resolve, AUDIO_LEAD_MS) as unknown as number;
+        localFlashTimersRef.current.push(id);
+      });
+      if (token.cancelled) return;
+      localFlashVisibleRef.current = [{ id: flashId, player, what, labelOverride }];
+      setLocalFlashQueue(localFlashVisibleRef.current);
+      const shownAt = Date.now();
+      await speakPromise;
+      const remainingVisibleMs = Math.max(0, SHOUT_FLASH_HOLD_MS - (Date.now() - shownAt));
+      await new Promise<void>((resolve) => {
+        const id = window.setTimeout(resolve, remainingVisibleMs) as unknown as number;
+        localFlashTimersRef.current.push(id);
+      });
+      if (token.cancelled) return;
+      localFlashVisibleRef.current = [];
+      setLocalFlashQueue([]);
+      await new Promise<void>((resolve) => {
+        const id = window.setTimeout(resolve, SHOUT_FLASH_GAP_MS) as unknown as number;
+        localFlashTimersRef.current.push(id);
+      });
+    });
   }, []);
 
   const matchRef = useRef<MatchState>(null as unknown as MatchState);
@@ -608,7 +647,7 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
         enqueueLocalShoutFlash(player, action.what, labelOverride);
         if (action.what === "vull" || action.what === "no-vull") {
           responseFlashUntilRef.current =
-            Date.now() + SHOUT_FLASH_HOLD_MS + SHOUT_FLASH_BUFFER_MS;
+            Math.max(responseFlashUntilRef.current, localFlashBusyUntilRef.current + SHOUT_FLASH_BUFFER_MS);
         }
         // El flash transitori (1.6s) es deriva automàticament del log
         // via `useShoutFlash`. La resta dels carteles persistents (truc,
@@ -633,7 +672,7 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
   }, []);
 
   const newRound = useCallback(() => {
-    setLocalFlashQueue([]);
+    resetLocalFlashQueue();
     setMatch(prev => {
       const next = startNextRound(prev);
       const forced = forcedNextDealerRef.current;
@@ -655,10 +694,10 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
       pendingHumanAnswerRef.current = null;
     }
     clearPendingSecondWait();
-  }, [clearConsultTimers, clearShoutTimer]);
+  }, [clearConsultTimers, clearShoutTimer, resetLocalFlashQueue]);
 
   const newGame = useCallback(() => {
-    setLocalFlashQueue([]);
+    resetLocalFlashQueue();
     const forced = forcedNextDealerRef.current;
     const firstDealer: PlayerId = forced !== null ? forced : initialDealer;
     if (forced !== null) forcedNextDealerRef.current = null;
@@ -675,7 +714,7 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
       pendingHumanAnswerRef.current = null;
     }
     clearPendingSecondWait();
-  }, [clearConsultTimers, clearShoutTimer]);
+  }, [clearConsultTimers, clearShoutTimer, resetLocalFlashQueue]);
 
   useEffect(() => {
     if (timerRef.current) {

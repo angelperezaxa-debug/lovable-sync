@@ -75,6 +75,11 @@ export const SHOUT_FLASH_HOLD_MS = 1600;
  *  user clearly sees the cartel disappear before the table moves. */
 export const SHOUT_FLASH_BUFFER_MS = 250;
 
+/** Mandatory empty time after any central shout cartel disappears before the
+ *  next central cartel may be shown. This is a hard visual invariant: the
+ *  centre of the table must never contain two shout cartels at once. */
+export const SHOUT_FLASH_GAP_MS = 1000;
+
 /** Minimum spacing between visible table events (cards, shouts and effects). */
 export const VISUAL_EVENT_GAP_MS = 1000;
 

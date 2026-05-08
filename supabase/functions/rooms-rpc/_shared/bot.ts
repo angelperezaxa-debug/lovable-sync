@@ -582,7 +582,6 @@ function decideEnvitResponse(
     }
   }
 
-
   // ----- Mode SINCER (bluffRate === 0): regles dures d'envit -----
   // Amb 31/32/33 d'envit, mai rebutjar i, segons el nivell, pujar la juga:
   //   · myEnvit ≥ 31 → mai "no-vull" en sincer (acceptem com a mínim).
