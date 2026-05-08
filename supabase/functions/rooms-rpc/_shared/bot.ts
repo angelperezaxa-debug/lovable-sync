@@ -582,34 +582,6 @@ function decideEnvitResponse(
     }
   }
 
-  // ----- Cas: el meu COMPANY ja ha rebutjat aquest envit (no-vull) -----
-  if (m && m.round.envitState.kind === "pending") {
-    const partnerSeat = ((player + 2) % 4) as PlayerId;
-    const rejected = m.round.envitState.rejectedBy ?? [];
-    if (rejected.includes(partnerSeat)) {
-      const renvitAct = actions.find(
-        (a) => a.type === "shout" && (a.what === "renvit" || a.what === "falta-envit"),
-      );
-      const vullAct = actions.find(
-        (a) => a.type === "shout" && a.what === "vull",
-      );
-      const noVullAct: Action = { type: "shout", what: "no-vull" };
-      let manoPriorityOverCaller = false;
-      const caller = m.round.envitState.calledBy;
-      let p2: PlayerId = m.round.mano;
-      for (let i = 0; i < 4; i++) {
-        if (p2 === player) { manoPriorityOverCaller = true; break; }
-        if (p2 === caller) { manoPriorityOverCaller = false; break; }
-        p2 = ((p2 + 1) % 4) as PlayerId;
-      }
-      const wantsRaise =
-        myEnvit >= 33 || (myEnvit === 32 && manoPriorityOverCaller);
-      if (wantsRaise && renvitAct) { log("renvit (company ha rebutjat)"); return renvitAct; }
-      if (myEnvit >= 31 && vullAct) { log("vull (company ha rebutjat, ≥31)"); return vullAct; }
-      log("no-vull (company ha rebutjat, <31)");
-      return noVullAct;
-    }
-  }
 
   // ----- Mode SINCER (bluffRate === 0): regles dures d'envit -----
   // Amb 31/32/33 d'envit, mai rebutjar i, segons el nivell, pujar la juga:
