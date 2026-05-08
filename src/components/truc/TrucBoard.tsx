@@ -1632,7 +1632,7 @@ export function TrucBoard(props: TrucBoardProps) {
         </div>
       </div>
 
-      <div className="flex-1 relative mt-[35px] mb-1 mx-2 min-h-[480px]" style={{ zIndex: TRUC_Z_INDEX.board }}>
+      <div className="flex-1 relative mt-[35px] mb-1 mx-2 min-h-[480px]">
         {(() => {
           // Construïm el centerOverlay (carteles "Vull"/"No vull"/"Truc"/...
           // centrats exactament al centre del felt) per passar-lo al
