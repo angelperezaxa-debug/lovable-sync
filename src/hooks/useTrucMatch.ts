@@ -476,6 +476,7 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
     localFlashCancelRef.current.cancelled = true;
     localFlashCancelRef.current = { cancelled: false };
     localFlashTailRef.current = Promise.resolve();
+    localFlashBusyUntilRef.current = 0;
     for (const id of localFlashTimersRef.current) window.clearTimeout(id);
     localFlashTimersRef.current = [];
     setLocalFlashQueue([]);
@@ -642,7 +643,7 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
         enqueueLocalShoutFlash(player, action.what, labelOverride);
         if (action.what === "vull" || action.what === "no-vull") {
           responseFlashUntilRef.current =
-            Date.now() + SHOUT_FLASH_HOLD_MS + SHOUT_FLASH_BUFFER_MS;
+            Math.max(responseFlashUntilRef.current, localFlashBusyUntilRef.current + SHOUT_FLASH_BUFFER_MS);
         }
         // El flash transitori (1.6s) es deriva automàticament del log
         // via `useShoutFlash`. La resta dels carteles persistents (truc,
@@ -667,7 +668,7 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
   }, []);
 
   const newRound = useCallback(() => {
-    setLocalFlashQueue([]);
+    resetLocalFlashQueue();
     setMatch(prev => {
       const next = startNextRound(prev);
       const forced = forcedNextDealerRef.current;
@@ -689,10 +690,10 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
       pendingHumanAnswerRef.current = null;
     }
     clearPendingSecondWait();
-  }, [clearConsultTimers, clearShoutTimer]);
+  }, [clearConsultTimers, clearShoutTimer, resetLocalFlashQueue]);
 
   const newGame = useCallback(() => {
-    setLocalFlashQueue([]);
+    resetLocalFlashQueue();
     const forced = forcedNextDealerRef.current;
     const firstDealer: PlayerId = forced !== null ? forced : initialDealer;
     if (forced !== null) forcedNextDealerRef.current = null;
@@ -709,7 +710,7 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
       pendingHumanAnswerRef.current = null;
     }
     clearPendingSecondWait();
-  }, [clearConsultTimers, clearShoutTimer]);
+  }, [clearConsultTimers, clearShoutTimer, resetLocalFlashQueue]);
 
   useEffect(() => {
     if (timerRef.current) {
