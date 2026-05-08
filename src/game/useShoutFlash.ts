@@ -118,10 +118,13 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
           });
           if (token.cancelled) return;
         }
-        // Avança l'àudio 700ms respecte al cartell perquè la veu i el cartell
-        // s'experimenten alhora (sumant els 200ms addicionals demanats per
-        // a l'envit i la latència inicial de reproducció).
-        const AUDIO_LEAD_MS = 700;
+        // Avança l'àudio respecte al cartell perquè la veu i el cartell
+        // s'experimenten alhora. Per als cants de truc retardem 100ms l'àudio
+        // (lead menor) perquè la veu de "Truque" coincidisca amb el cartell.
+        const TRUC_SHOUTS: ReadonlySet<ShoutKind> = new Set([
+          "truc", "retruc", "quatre", "joc-fora",
+        ]);
+        const AUDIO_LEAD_MS = TRUC_SHOUTS.has(what) ? 600 : 700;
         const speakPromise = SPOKEN_SHOUTS.has(what)
           ? speakShout(what, labelOverride).catch(() => undefined)
           : Promise.resolve();
