@@ -1643,6 +1643,7 @@ export function TrucBoard(props: TrucBoardProps) {
             shoutFlashes && shoutFlashes.length > 0
               ? shoutFlashes
               : (shoutFlash ? [shoutFlash] : []);
+          const currentFlash = list[0];
           const tailFor = (p?: PlayerId): "top" | "bottom" | "left" | "right" | undefined => {
             if (p === undefined) return undefined;
             if (p === HUMAN) return "bottom";
@@ -1651,28 +1652,15 @@ export function TrucBoard(props: TrucBoardProps) {
             if (p === LEFT) return "left";
             return undefined;
           };
-          const OFFSET_PX = 38;
-          const overlay = list.length === 0 ? null : (
-            <>
-              {list.map((f, idx) => {
-                const tailDirection = tailFor(f.player);
-                const labelOverride = f.labelOverride;
-                const slot = idx === 0 ? 0 : (idx % 2 === 1 ? Math.ceil(idx / 2) : -Math.ceil(idx / 2));
-                const dx = tailDirection === "left" || tailDirection === "right" ? 0 : slot * OFFSET_PX;
-                const dy = tailDirection === "top" || tailDirection === "bottom" ? 0 : slot * OFFSET_PX;
-                return (
-                  <ShoutBubble
-                    key={`${f.player ?? "?"}-${f.what}-${idx}`}
-                    what={f.what as ShoutKind}
-                    labelOverride={labelOverride}
-                    tailDirection={tailDirection}
-                    className="!relative !left-auto !top-auto !translate-x-0 !translate-y-0"
-                    style={{ marginLeft: dx, marginTop: dy }}
-                  />
-                );
-              })}
-            </>
-          );
+          const overlay = currentFlash ? (
+            <ShoutBubble
+              key={`${currentFlash.player ?? "?"}-${currentFlash.what}`}
+              what={currentFlash.what as ShoutKind}
+              labelOverride={currentFlash.labelOverride}
+              tailDirection={tailFor(currentFlash.player)}
+              className="!relative !left-auto !top-auto !translate-x-0 !translate-y-0"
+            />
+          ) : null;
           return (
             <TableSurface
               match={collectingVisualMatch ?? match}
