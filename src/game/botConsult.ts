@@ -431,18 +431,25 @@ export function partnerAnswerFor(
     return truth;
   }
 
-  // "Vols tornar a envidar?" → resposta segons l'envit total:
-  //  - ≥31 → "Envida!" (renvida)
-  //  - <31 → "No"
+  // "Vols tornar a envidar?" → resposta estricta:
+  //  - envit = 33 → SEMPRE "Envida!" (renvida).
+  //  - envit = 32 i sóc mà sobre el rival que va envidar → "Envida!".
+  //  - en qualsevol altre cas → "No".
   if (question === "vols-tornar-envidar") {
-    let truth: ChatPhraseId;
-    if (envit >= 31) {
-      truth = "envida";
-    } else if (envit === 30) {
-      truth = Math.random() < 0.3 ? "envida" : "no";
-    } else {
-      truth = "no";
+    let manoPriorityOverCaller = false;
+    if (m.round.envitState.kind === "pending") {
+      const caller = m.round.envitState.calledBy;
+      let p: PlayerId = m.round.mano;
+      for (let i = 0; i < 4; i++) {
+        if (p === partner) { manoPriorityOverCaller = true; break; }
+        if (p === caller) { manoPriorityOverCaller = false; break; }
+        p = ((p + 1) % 4) as PlayerId;
+      }
     }
+    let truth: ChatPhraseId;
+    if (envit >= 33) truth = "envida";
+    else if (envit === 32 && manoPriorityOverCaller) truth = "envida";
+    else truth = "no";
     if (lie) return truth === "no" ? "envida" : "no";
     return truth;
   }
