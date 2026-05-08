@@ -40,6 +40,7 @@ import {
   LOW_LATENCY_ENVIT_REVEAL_ROUND_END_MS,
   SHOUT_FLASH_HOLD_MS,
   SHOUT_FLASH_BUFFER_MS,
+  SHOUT_FLASH_GAP_MS,
 } from "@/game/chatTimings";
 
 
@@ -123,6 +124,9 @@ interface PendingSecondPlayerWait {
 
 export function useTrucMatch(options: UseTrucMatchOptions = {}) {
   const [localFlashQueue, setLocalFlashQueue] = useState<Array<{ id: string; player: PlayerId; what: ShoutKind; labelOverride?: string }>>([]);
+  const localFlashTailRef = useRef<Promise<void>>(Promise.resolve());
+  const localFlashTimersRef = useRef<number[]>([]);
+  const localFlashCancelRef = useRef<{ cancelled: boolean }>({ cancelled: false });
   // Índex de la baza actual des del punt de vista de la UI. Es declara
   // ací (abans del recordChatPhrase) per poder rastrejar a quina baza
   // s'ha emés cada frase ("Vine a vore!", etc.).
