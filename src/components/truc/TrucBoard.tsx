@@ -1329,7 +1329,20 @@ export function TrucBoard(props: TrucBoardProps) {
     r.envitState.kind !== "pending" &&
     r.trucState.kind !== "pending";
   const highlightRespostesLastInPair = isLastInPairFirstTrick && !respostesLastInPairDismissed;
-  const highlightRespostesEffective = highlightRespostes || highlightRespostesLastInPair;
+  // Suprimim qualsevol highlight de "Respostes" quan sóc el PRIMER de la
+  // meua parella a la 1a baza (ja he tirat) i és el torn del meu company
+  // (2n de la parella, encara no ha tirat). En aquest moment no hi ha res
+  // a respondre per la meua part, així que el botó no s'ha de destacar.
+  const suppressRespostesFirstOfPairPartnerTurn =
+    r.phase === "playing" &&
+    r.tricks.length === 1 &&
+    !!firstTrick0 &&
+    humanHasPlayedFirstTrick &&
+    !partnerHasPlayedFirstTrick &&
+    r.turn === PARTNER;
+  const highlightRespostesEffective =
+    !suppressRespostesFirstOfPairPartnerTurn &&
+    (highlightRespostes || highlightRespostesLastInPair);
   const highlightAltres =
     r.phase === "playing" &&
     r.tricks.length === 1 &&
