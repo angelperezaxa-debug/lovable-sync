@@ -128,6 +128,7 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
   const localFlashTimersRef = useRef<number[]>([]);
   const localFlashCancelRef = useRef<{ cancelled: boolean }>({ cancelled: false });
   const localFlashBusyUntilRef = useRef<number>(0);
+  const localFlashVisibleRef = useRef<Array<{ id: string; player: PlayerId; what: ShoutKind; labelOverride?: string }>>([]);
   // Índex de la baza actual des del punt de vista de la UI. Es declara
   // ací (abans del recordChatPhrase) per poder rastrejar a quina baza
   // s'ha emés cada frase ("Vine a vore!", etc.).
@@ -479,6 +480,7 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
     localFlashBusyUntilRef.current = 0;
     for (const id of localFlashTimersRef.current) window.clearTimeout(id);
     localFlashTimersRef.current = [];
+    localFlashVisibleRef.current = [];
     setLocalFlashQueue([]);
   }, []);
 
@@ -490,11 +492,11 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
     localFlashBusyUntilRef.current = estimatedStartAt + AUDIO_LEAD_MS + SHOUT_FLASH_HOLD_MS + SHOUT_FLASH_GAP_MS;
     localFlashTailRef.current = localFlashTailRef.current.then(async () => {
       if (token.cancelled) return;
-      let hadVisible = false;
-      setLocalFlashQueue((prev) => {
-        hadVisible = prev.length > 0;
-        return prev.length > 0 ? [] : prev;
-      });
+      const hadVisible = localFlashVisibleRef.current.length > 0;
+      if (hadVisible) {
+        localFlashVisibleRef.current = [];
+        setLocalFlashQueue([]);
+      }
       if (hadVisible) {
         await new Promise<void>((resolve) => {
           const id = window.setTimeout(resolve, SHOUT_FLASH_GAP_MS) as unknown as number;
@@ -508,7 +510,8 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
         localFlashTimersRef.current.push(id);
       });
       if (token.cancelled) return;
-      setLocalFlashQueue([{ id: flashId, player, what, labelOverride }]);
+      localFlashVisibleRef.current = [{ id: flashId, player, what, labelOverride }];
+      setLocalFlashQueue(localFlashVisibleRef.current);
       const shownAt = Date.now();
       await speakPromise;
       const remainingVisibleMs = Math.max(0, SHOUT_FLASH_HOLD_MS - (Date.now() - shownAt));
@@ -517,7 +520,8 @@ export function useTrucMatch(options: UseTrucMatchOptions = {}) {
         localFlashTimersRef.current.push(id);
       });
       if (token.cancelled) return;
-      setLocalFlashQueue((prev) => prev.filter((f) => f.id !== flashId));
+      localFlashVisibleRef.current = [];
+      setLocalFlashQueue([]);
       await new Promise<void>((resolve) => {
         const id = window.setTimeout(resolve, SHOUT_FLASH_GAP_MS) as unknown as number;
         localFlashTimersRef.current.push(id);
