@@ -161,6 +161,7 @@ export function useShoutFlashes(match: MatchState | null, disabled = false): Sho
       timersRef.current.forEach((timer) => window.clearTimeout(timer));
       timersRef.current = [];
       cancelTokenRef.current.cancelled = true;
+      visibleRef.current = [];
     };
   }, []);
 
